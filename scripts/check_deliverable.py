@@ -39,8 +39,14 @@ SPEC_SECTIONS = [
 
 
 def load(path):
-    text = Path(path).read_text(encoding="utf-8", errors="ignore")
-    return text
+    p = Path(path)
+    if p.suffix.lower() == ".docx":
+        try:
+            from docx import Document
+        except ImportError:
+            raise SystemExit("读取 docx 需要 python-docx：pip install python-docx")
+        return "\n".join(par.text for par in Document(str(p)).paragraphs)
+    return p.read_text(encoding="utf-8", errors="ignore")
 
 
 def split_claims(text):
@@ -167,6 +173,24 @@ def check_citations(text):
     return results
 
 
+def check_paragraph_numbering(text):
+    """段落编号连续性：存在编号时须从 [0001] 起连续、无重号缺号；完全无编号时仅 WARN。"""
+    nums = [int(m.group(1)) for m in re.finditer(r"^\[(\d{4})\]", text, re.M)]
+    if not nums:
+        return [("WARN", "段落编号", "未检测到段落编号 [0001]…；正式提交前建议按 [0001] 起连续编号")]
+    problems = []
+    if nums[0] != 1:
+        problems.append(f"起始编号为 [{nums[0]:04d}]，应从 [0001] 起")
+    if len(set(nums)) != len(nums):
+        problems.append("存在重号")
+    expected = list(range(nums[0], nums[0] + len(nums)))
+    if nums != expected:
+        problems.append("编号不连续或缺号")
+    if problems:
+        return [("FAIL", "段落编号连续性", "；".join(problems))]
+    return [("PASS", "段落编号连续性", f"共 {len(nums)} 段，连续无重号")]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("file")
@@ -184,6 +208,7 @@ def main():
 
     checks = check_disclosure(text) if kind == "disclosure" else check_application(text)
     checks += check_citations(text)
+    checks += check_paragraph_numbering(text)
 
     fails = [c for c in checks if c[0] == "FAIL"]
     warns = [c for c in checks if c[0] == "WARN"]

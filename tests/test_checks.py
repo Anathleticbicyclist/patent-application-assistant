@@ -6,8 +6,10 @@
 2. 缺陷样例必须被抓出（多项引多项 FAIL、支持度不足 WARN）——防止检查器漏报
 3. 附图必须真的产出纯黑白图片——防止依赖变更后静默失真
 """
+import json
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -64,9 +66,57 @@ expect("退出码 0", rc == 0, f"实际 {rc}")
 expect("明确标注降级，不编造命中数", "降级" in out)
 
 print("5. 合规闸门")
-rc, out = run("compliance_check.py", "--answers", str(Path("/tmp/pt/ans.json"))
-              if Path("/tmp/pt/ans.json").exists() else "--print-only")
+gate_dir = Path(tempfile.mkdtemp(prefix="patent_gate_"))
+gate_answers = {
+    "owner": "职务发明（单位）",
+    "owner_basis": "劳动合同第7条",
+    "public": "未公开",
+    "abroad": "否",
+    "filed_in_cn": "是",
+    "data_out": "否（仅本地处理）",
+    "unity": "单一方案",
+    "deadline": "无",
+}
+ans_file = gate_dir / "answers.json"
+ans_file.write_text(json.dumps(gate_answers, ensure_ascii=False), encoding="utf-8")
+rc, out = run("compliance_check.py", "--answers", str(ans_file), "--print-only")
 expect("能输出闸门卡", "合规闸门卡" in out)
+expect("答案齐全时闸门通过（退出码 0）", rc == 0, f"实际 {rc}")
+
+# 删掉一个必答项 → 退出码 1
+missing_answers = dict(gate_answers)
+del missing_answers["owner"]
+miss_file = gate_dir / "answers-missing.json"
+miss_file.write_text(json.dumps(missing_answers, ensure_ascii=False), encoding="utf-8")
+rc, out = run("compliance_check.py", "--answers", str(miss_file), "--print-only")
+expect("必答项缺失时退出码 1", rc == 1, f"实际 {rc}")
+
+print("6. 其余脚本回归（此前零用例）")
+# check_deliverable：合格样例无 FAIL，退出码 0
+rc, out = run("check_deliverable.py", str(EX / "application.md"))
+expect("check_deliverable 合格样例退出码 0", rc == 0, f"实际 {rc}")
+
+# claim_chart：基于合格样例与比对映射生成比对表文件
+chart_dir = Path(tempfile.mkdtemp(prefix="patent_chart_"))
+chart_out = chart_dir / "chart.md"
+rc, out = run("claim_chart.py", "--claims", str(EX / "application.md"),
+              "--map", str(EX / "claim-map.json"), "--out", str(chart_out))
+expect("claim_chart 生成比对表", rc == 0 and chart_out.exists(), f"实际 {rc}")
+
+# mcp_setup：--help 可用；生成的配置含 mcpServers 段
+rc, out = run("mcp_setup.py", "--help")
+expect("mcp_setup --help 退出码 0", rc == 0, f"实际 {rc}")
+rc, out = run("mcp_setup.py", "--target", "print")
+expect("mcp_setup 生成配置含 mcpServers", "mcpServers" in out)
+
+# patent_cli：--help 可用
+rc, out = run("patent_cli.py", "--help")
+expect("patent_cli --help 退出码 0", rc == 0, f"实际 {rc}")
+
+# pipeline：合格样例跑全流程到临时目录
+pipe_dir = Path(tempfile.mkdtemp(prefix="patent_pipe_"))
+rc, out = run("pipeline.py", "--doc", str(EX / "application.md"), "--out", str(pipe_dir))
+expect("pipeline 合格样例退出码 0", rc == 0, f"实际 {rc}")
 
 print()
 if failures:

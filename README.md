@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Skill](https://img.shields.io/badge/type-AI%20Agent%20Skill-blue)](SKILL.md)
-[![Scripts](https://img.shields.io/badge/scripts-6%20runnable-success)](scripts/)
+[![Scripts](https://img.shields.io/badge/scripts-offline%20runnable-success)](scripts/)
 
 一个把「专利交底书撰写、保护点挖掘、查新检索、权利要求与说明书起草、侵权比对与规避设计、申请前质检」串成一条流水线的 **AI Agent Skill**。
 
@@ -74,8 +74,8 @@ patent-application-assistant/
 │   ├── review-checklist.md         # 66 项质检（8 基础类 + 4 专项类）+ OA 应对
 │   ├── compliance-gate.md          # P0.5 合规闸门：权属/宽限期/保密审查/数据出境/时限
 │   ├── subject-matter.md           # 分领域撰写：软件/机械/电子/医药/化学的客体与要点
-│   ├── open-source-map.md          # 开源项目 ↔ 流程步骤映射（精选 49 个）
-│   └── open-source-index.md        # 全量索引（186 个，逐项标注可用阶段）
+│   ├── open-source-map.md          # 开源项目 ↔ 流程步骤映射（精选，去重后 44 个）
+│   └── open-source-index.md        # 全量索引（187 个，逐项标注可用阶段）
 ├── assets/
 │   └── disclosure-template.md      # 可直接填写的交底书空模板
 ├── scripts/
@@ -87,11 +87,13 @@ patent-application-assistant/
 │   ├── claim_chart.py              # 侵权比对表（全覆盖原则自动出结论）
 │   ├── check_deliverable.py        # 交付物机检（章节/编号/摘要/占位符）
 │   ├── mcp_setup.py                # 高频专利 MCP 配置生成（不写密钥明文）
+│   ├── compliance_check.py         # P0.5 合规闸门（权属/公开/保密审查/数据出境/单一性）
 │   └── run_examples.sh             # 端到端自检
 ├── tests/
 │   └── test_checks.py              # 回归测试：合格样例必须全绿、缺陷样例必须被抓出
 ├── examples/
-│   └── battery-case/               # 完整示例：合格稿 + 缺陷稿 + 比对映射 + 附图规格
+│   ├── battery-case/               # 完整示例（机械/电化学）：合格稿 + 缺陷稿 + 比对映射 + 附图规格
+│   └── algorithm-case/             # 完整示例（软件算法）：合格稿 + 缺陷稿 + 比对映射
 └── requirements.txt
 ```
 
@@ -139,6 +141,7 @@ cp -r patent-application-assistant ~/.doubao/agent_mode/workspace/.user_skills/
 ### 3. 直接调脚本（不经过 Agent）
 
 ```bash
+python3 --version                     # 运行环境：Python 3.10 及以上（本项目在 3.12 实测通过，更低版本未验证）
 pip install -r requirements.txt
 python3 scripts/patent_cli.py --help
 bash scripts/run_examples.sh          # 端到端自检，先确认环境是通的
@@ -199,6 +202,27 @@ python3 scripts/patent_cli.py mcp --target claude
 bash scripts/run_examples.sh      # 用 examples/battery-case 跑通全部脚本
 ```
 
+**输出长什么样（实跑 `python3 scripts/patent_cli.py claims examples/battery-case/application.md`）**：
+
+```text
+✅ 类别覆盖 —— 独权类别 ['方法', '装置']
+✅ 禁用语/不确定用语
+✅ 说明书支持度 100%（9/9 个术语可溯源）
+✅ 摘要字数 155
+----------------------------------------------------------------
+PASS 12 / WARN 0 / FAIL 0   评分 100
+```
+
+对照缺陷稿 `examples/battery-case/application-defective.md`（同样一条命令）：
+
+```text
+⚠️ 权项 3 数值范围 [0.5,5] 端点/中间值未在实施例记载，支持性存疑
+⚠️ 未指定摘要附图 —— 有附图时须指定其中一幅为摘要附图
+PASS 10 / WARN 5 / FAIL 1   评分 60
+```
+
+同一套机检跑在两个样例上，一个 100 分全绿、一个被正确判 FAIL——这正是「合格样例必须全绿、缺陷样例必须被抓出」的回归基线（`tests/test_checks.py`）。
+
 **没有 API 凭据时的行为（自动降级，不用你先报错再改配置）**：
 
 | 场景 | 脚本行为 |
@@ -252,7 +276,20 @@ python3 scripts/patent_cli.py claims 申请文件.md
 
 ## 免责声明
 
-本项目提供的是**技术文档整理与检索方法论**，不是法律意见。专利申请文件的最终定稿、侵权认定、无效宣告、许可谈判，均须由具备资质的专利代理师或律师完成。使用者应自行核验所有检索结果与专利法律状态。
+本项目提供技术文档整理、检索方法与初步合规自检，**不构成法律意见、不构成代理或律师服务**。以下输出均为技术层面初判，须经具备资质的专利代理师／律师复核后使用：
+
+1. 查新／检索报告与对比文件相关性判断；
+2. 新颖性、创造性、实用性初判；
+3. FTO／侵权比对与规避建议；
+4. 权属、公开状态、保密审查、数据出境等合规闸门结论。
+
+本项目产出的交底书、权利要求书与说明书均为**初稿草稿，不可直接提交国家知识产权局**。申请文件的最终定稿、侵权认定、无效宣告、许可转让谈判，均须由具备资质的专利代理师或律师完成。使用者应自行核验全部检索结果、专利法律状态与证据真实性。
+
+## 已知局限
+
+- **检索不代真**：未配置检索凭据时，`search` 只生成检索式与数据库直链，**不返回真实命中结果**；命中情况、对比文件与法律状态需使用者自行回填并核验。「检索计划」不等于「已完成查新」。
+- **数据快照**：致谢条目中的 ⭐ 星标为清单归档时点（2026-11）的快照，未在每次发布前联网复核；第三方项目的维护状态、接口、可用性与许可证请以其原始仓库为准。
+- **外部服务自备**：本仓库不内嵌第三方项目代码；外部 MCP／API 的配额、速率限制、服务条款与数据处理约定由对应服务方决定，接入前请自行核验。
 
 ---
 

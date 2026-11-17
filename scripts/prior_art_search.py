@@ -213,6 +213,8 @@ def main():
     ap.add_argument("--out", default=".", help="输出目录")
     ap.add_argument("--provider", choices=list(PROVIDERS) + ["auto", ""], default="auto",
                     help="auto=有凭据就调、没凭据静默降级；也可指定 pqai/epo/uspto；留空=只出计划")
+    ap.add_argument("--confirm-egress", action="store_true",
+                    help="已核对外发合规后方可调用外部检索接口；未确认时只生成检索计划，不发请求")
     args = ap.parse_args()
 
     kw = norm_terms(args.keywords) or [args.topic]
@@ -234,7 +236,11 @@ def main():
             note = degrade_note()
         else:
             print(f"[auto] 检测到凭据，使用 provider: {provider}")
-    if provider:
+    if provider and not args.confirm_egress:
+        # 外发确认闸门：检测到可用凭据但未确认外发合规时，不发起任何请求，仅出检索计划
+        note = "已检测到检索凭据，但未确认外发合规（--confirm-egress），本次仅生成检索计划。"
+        hits = None
+    elif provider:
         hits, note = PROVIDERS[provider](queries[2]["检索式"], 10)
 
     plan = render_plan(args.topic, queries, links, note, hits)

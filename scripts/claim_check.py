@@ -21,7 +21,8 @@ from pathlib import Path
 
 # 只保留真正会被审查员挑的模糊用语；「高/低/厚/薄」单字误报率太高，改为词组判断
 BANNED = ["大约", "约为", " Approximately", "适当", "优选", "最好", "例如", "诸如",
-          "等", "等等", "尽可能", "差不多", "左右"]
+          "等", "等等", "尽可能", "差不多", "左右",
+          "较佳", "最佳", "大幅", "显著", "大致"]
 # 需要结合语境才判定的模糊表述
 BANNED_PHRASES = ["较大的", "较小的", "较高的", "较低的", "较厚", "较薄", "较强", "较弱",
                   "适当范围", "合适的", "根据需要"]
@@ -98,6 +99,22 @@ def split_features(text):
     body = text.split("其特征在于", 1)[-1]
     parts = re.split(r"[；;]|\bS\d+[、.]|（\d+）|\(\d+\)", body)
     return [p.strip(" ，,。") for p in parts if len(p.strip(" ，,。")) >= 4]
+
+
+RANGE_RE = re.compile(r"(\d+(?:\.\d+)?)\s*[–~至到\-－—]\s*(\d+(?:\.\d+)?)")
+
+
+def _number_present(spec, value):
+    """数字字面比对：允许 50 命中 50Hz，但不命中 150 中的 50。"""
+    v = float(value)
+    token = str(int(v)) if v.is_integer() else f"{v:.6g}"
+    return re.search(r"(?<![0-9.])" + re.escape(token) + r"(?![0-9])", spec) is not None
+
+
+def _range_supported(spec, lo, hi):
+    """端点或中间值任一在说明书出现，即视为数值范围有落点。"""
+    mid = (lo + hi) / 2
+    return _number_present(spec, lo) or _number_present(spec, hi) or _number_present(spec, mid)
 
 
 def check(claims, text):
@@ -218,9 +235,29 @@ def check(claims, text):
         add(("WARN" if unsupported else "PASS",
              f"说明书支持度 {ratio:.0%}（{len(claim_terms)-len(unsupported)}/{len(claim_terms)} 个术语可溯源）", note))
 
+    # 数值范围落点（第 26 条第 4 款粗筛）：端点/中点任一在实施例有落点即通过，均无落点出 WARN
+    for c in claims:
+        # 先剥离「根据权利要求 N 至 M 项」这类引用表述，避免编号区间被误判为参数范围
+        body = re.sub(r"(根据)?权利要求\s*[\d\s至到~\-－—或、,，]+项?", "", c["text"])
+        for m in RANGE_RE.finditer(body):
+            lo, hi = float(m.group(1)), float(m.group(2))
+            if not _range_supported(spec, lo, hi):
+                add(("WARN", f"权项 {c['no']} 数值范围 [{m.group(1)},{m.group(2)}] "
+                             "端点/中间值未在实施例记载，支持性存疑", ""))
+
     # 摘要附图
     if "摘要附图" not in text:
         add(("WARN", "未指定摘要附图", "有附图时须指定其中一幅为摘要附图"))
+
+    # 摘要附图图号真实性：指定的图号必须在附图说明中列出，否则 FAIL
+    m_abs_fig = re.search(r"摘要附图[：:]\s*图\s*(\d+)", text)
+    if m_abs_fig:
+        abs_fig = m_abs_fig.group(1)
+        m_desc = re.search(r"附图说明\s*\n(.*?)(?=\n#|\n##|\Z)", text, re.S)
+        listed = set(re.findall(r"图\s*(\d+)", m_desc.group(1))) if m_desc else set()
+        if listed and abs_fig not in listed:
+            add(("FAIL", "摘要附图图号",
+                 f"摘要附图指定图{abs_fig}，未在附图说明中列出"))
 
     # 摘要
     m = re.search(r"摘要\s*\n+(.+?)(?=\n#|\Z)", text, re.S)
@@ -236,7 +273,11 @@ def main():
     ap.add_argument("--json", default="")
     args = ap.parse_args()
 
-    text = read_text(args.file)
+    try:
+        text = read_text(args.file)
+    except (OSError, ValueError):
+        print(f"[FAIL] 文件不存在或无法解析：{args.file}")
+        return 2
     claims = extract_claims(text)
     results = check(claims, text)
 

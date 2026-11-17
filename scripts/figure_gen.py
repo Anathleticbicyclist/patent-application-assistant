@@ -127,7 +127,11 @@ def main():
     ap.add_argument("--dpi", type=int, default=300)
     args = ap.parse_args()
 
-    spec = json.loads(Path(args.spec).read_text(encoding="utf-8"))
+    try:
+        spec = json.loads(Path(args.spec).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        print(f"[FAIL] 文件不存在或无法解析：{args.spec}")
+        return 2
     kind = spec.get("type")
     if kind not in KINDS:
         print(f"不支持的图类型：{kind}，可选 {list(KINDS)}")

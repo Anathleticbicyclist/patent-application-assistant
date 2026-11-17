@@ -25,13 +25,14 @@ QUESTIONS = [
      "以什么方式公开？"),
     ("in_art24", "是否属第24条情形", ["是", "否", "不确定"], "是否属于专利法第24条的四类情形？"),
     ("abroad", "是否境外申请", ["否", "是", "未定"], "是否计划向外国申请专利？"),
+    ("filed_in_cn", "是否已先在中国提交", ["是", "否", "未定"], "是否已先在中国提交申请？"),
     ("data_out", "数据是否外发", ["否（仅本地处理）", "是（已脱敏）", "是（未脱敏）"],
      "技术方案是否会发给境外 API / 外部服务？"),
     ("unity", "单一性", ["单一方案", "多发明点（需分案）"], "是一个发明点还是多个？"),
     ("deadline", "硬期限", None, "有无不可错过的期限？（优先权12个月/PCT30个月/答复期限）"),
 ]
 
-REQUIRED = {"owner", "owner_basis", "public", "abroad", "data_out", "unity", "deadline"}
+REQUIRED = {"owner", "owner_basis", "public", "abroad", "filed_in_cn", "data_out", "unity", "deadline"}
 
 
 def evaluate(a):
@@ -57,10 +58,8 @@ def evaluate(a):
             try:
                 d = datetime.strptime(date, "%Y-%m-%d")
                 days = (datetime.now() - d).days
-                if days > 183:
-                    risks.append(("高", "宽限期", f"距首次公开已 {days} 天（>6 个月），宽限期已过。"))
-                else:
-                    risks.append(("中", "宽限期", f"距首次公开 {days} 天，仍在 6 个月内——但仅第24条情形才受保护。"))
+                risks.append(("中", "宽限期", f"距首次公开 {days} 天，是否仍在法定宽限期内、能否享受宽限期保护，"
+                                           "须由代理师核对公开日期、场合与证明材料后确认（以通知书指定期限为准）。"))
             except ValueError:
                 risks.append(("中", "日期格式", f"公开日期「{date}」无法解析，请用 YYYY-MM-DD。"))
 
@@ -130,7 +129,7 @@ def ask_interactive():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--answers", help="答案 JSON")
-    ap.add_argument("--out", default="compliance-gate-card.md")
+    ap.add_argument("--out", default="out/compliance-gate-card.md")
     ap.add_argument("--interactive", action="store_true")
     ap.add_argument("--print-only", action="store_true", help="只打印不写文件")
     args = ap.parse_args()
@@ -138,7 +137,11 @@ def main():
     if args.interactive:
         a = ask_interactive()
     elif args.answers:
-        a = json.loads(Path(args.answers).read_text(encoding="utf-8"))
+        try:
+            a = json.loads(Path(args.answers).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            print(f"[FAIL] 答案文件不存在或无法解析：{args.answers}")
+            a = {}
     else:
         print("需要 --interactive 或 --answers。用 --print-only 可只看模板。")
         a = {}
@@ -147,6 +150,7 @@ def main():
     card, missing = render(a, risks)
     print(card)
     if not args.print_only:
+        Path(args.out).parent.mkdir(parents=True, exist_ok=True)
         Path(args.out).write_text(card, encoding="utf-8")
         print(f"已写入 {args.out}")
     return 1 if missing else 0

@@ -2,5 +2,5 @@
  {"claim":"1","element_id":"1-1","feature":"以预设采样率采集温度与电压信号","target":"100Hz 采集温度、电压","verdict":"SAME","evidence":"产品逻辑 p12"},
  {"claim":"1","element_id":"1-2","feature":"滑窗分段并提取温升斜率","target":"滑窗分段，提取斜率","verdict":"SAME","evidence":"p13"},
  {"claim":"1","element_id":"1-3","feature":"阈值触发后窗口内再次采集并二次确认","target":"仅绝对温度阈值，无二次确认","verdict":"DIFF","evidence":"p14"},
- {"claim":"5","element_id":"5-1","feature":"处理器执行实现权1方法","target":"设备固件实现同上","verdict":"SAME","evidence":"p20"}
+ {"claim":"6","element_id":"6-1","feature":"处理器执行实现权1方法","target":"设备固件实现同上","verdict":"SAME","evidence":"p20"}
 ]

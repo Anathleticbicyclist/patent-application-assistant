@@ -13,7 +13,7 @@ description: 面向中国发明专利/实用新型/外观设计的全流程专�
 1. **不编造证据**：检索到的对比文件必须来自真实检索结果，专利号、公开号、申请人、日期逐项可核。没有检索到就写「未检索到高度相关文献」，并说明检索范围与局限，绝不虚构对比文件。
 2. **不虚构法理**：涉及法条只引用确实存在于《专利法》《专利法实施细则》《专利审查指南》中的表述；不确定就写「需代理师确认」，不要自造条款号。
 3. **区分事实与判断**：检索结果=事实；新颖性/创造性/侵权=**初步判断**。所有结论必须带一句「本结论为技术层面初判，不构成法律意见，最终以代理师/律师意见为准」。
-4. **不做非正常申请**：不伪造实验数据与实施例、不拼凑无研发支撑的方案、不为规避审查而拆分改写（专利法第 20 条诚信原则）。用户要求「编点数据显得效果好」时必须拒绝并说明后果。
+4. **不做非正常申请**：不伪造实验数据与实施例、不拼凑无研发支撑的方案、不为规避审查而拆分改写（专利法第 20 条诚信原则）。用户要求「编点数据显得效果好」时必须拒绝并说明后果；可直接照用的拒绝口径见 `references/compliance-gate.md` 第六节。
 
 另外两条实务纪律：
 
@@ -69,7 +69,7 @@ description: 面向中国发明专利/实用新型/外观设计的全流程专�
 
 ## 开源工具编排（本技能不内置代码，按步骤调用现成项目）
 
-完整映射见 `references/open-source-map.md`（精选 49 个最常用），**全量 187 个的逐项索引**见 `references/open-source-index.md`；全部致谢见 `README.md`。常用组合：
+完整映射见 `references/open-source-map.md`（精选，去重后 44 个最常用），**全量 187 个的逐项索引**见 `references/open-source-index.md`；全部致谢见 `README.md`。常用组合：
 
 - **查新检索**：`patsnap/patent-literature-search-mcp`（六大局覆盖）、`riemannzeta/patent_mcp_server`（USPTO 最全）、`pqaidevteam/pqai`（语义现有技术检索）、`KunihiroS/google-patents-mcp`。中文场景优先 CNIPA 官方检索 + Google Patents 中文库交叉验证。
 - **交底书/申请文件生成**：`handsomestWei/patent-disclosure-skill`（结构与话术参考）、`wanshuiyin/Auto-claude-code-research-in-sleep` 的 `patent-pipeline`（阶段化推进范例）、`QiYao-Wang/AutoPatent`（多 Agent 撰写框架）。
@@ -100,10 +100,11 @@ description: 面向中国发明专利/实用新型/外观设计的全流程专�
 - `references/disclosure-template.md` — 交底书 12 节逐一写法与退回原因
 - `references/claims-drafting.md` — 权利要求与说明书起草规则、正反例
 - `references/design-around.md` — 侵权比对表与五类规避路径、风险分级
-- `references/review-checklist.md` — 8 类 40 项质检清单、审查意见答复思路
+- `references/review-checklist.md` — 66 项质检清单（A–H 8 类 40 项基础 + I–L 4 类 26 项专项）、审查意见答复思路
 - `references/compliance-gate.md` — **P0.5 合规闸门**：权属、公开宽限期、保密审查、数据出境、单一性/分案、时限
 - `references/subject-matter.md` — **分领域撰写**：软件算法、商业方法/UI、机械结构、电子通信、医药生物、化学材料
-- `references/open-source-map.md` — 开源项目 ↔ 流程步骤映射（精选，最常用的 49 个；已接成脚本的在表内标 ✅）
+- `references/open-source-map.md` — 开源项目 ↔ 流程步骤映射（精选，去重后最常用的 44 个；已接成脚本的在表内标 ✅）
 - `scripts/` — 可执行层（pipeline 全流程、检索计划、附图、权项检查、比对表、MCP 配置、交付物机检）
 - `references/open-source-index.md` — **全量索引**（187 个，逐项标注可用阶段，选型/反查用）
 - `assets/disclosure-template.md` — 可直接填写的交底书空模板
+- `examples/battery-case/`、`examples/algorithm-case/` — 合格稿 + 缺陷稿成对样例（`tests/` 的回归基线由此驱动；先看合格稿知道该写成什么样，再看缺陷稿知道机检会抓什么）

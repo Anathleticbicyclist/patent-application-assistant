@@ -117,12 +117,20 @@ def main():
     ap.add_argument("--out", default="claim-chart.md")
     args = ap.parse_args()
 
-    claims = extract_claims(read_text(args.claims))
+    try:
+        claims = extract_claims(read_text(args.claims))
+    except (OSError, ValueError):
+        print(f"[FAIL] 文件不存在或无法解析：{args.claims}")
+        return 2
     if not claims:
         print("未解析到权利要求，检查「1. 」起始格式")
         return 2
 
-    mapping = json.loads(Path(args.map).read_text(encoding="utf-8"))
+    try:
+        mapping = json.loads(Path(args.map).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        print(f"[FAIL] 文件不存在或无法解析：{args.map}")
+        return 2
     chart, verdicts = build_chart(claims, mapping)
     Path(args.out).write_text(chart, encoding="utf-8")
 

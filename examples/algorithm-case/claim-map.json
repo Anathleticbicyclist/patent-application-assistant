@@ -1,0 +1,7 @@
+[
+ {"claim":"1","element_id":"1-1","feature":"采集目标设备的运行时序数据","target":"边缘网关采集电机温度与振动序列","verdict":"SAME","evidence":"产品逻辑 p8"},
+ {"claim":"1","element_id":"1-2","feature":"滑窗截取并提取特征向量","target":"按20周期滑窗提取均值、方差、斜率、峰值","verdict":"SAME","evidence":"p9"},
+ {"claim":"1","element_id":"1-3","feature":"输入检测模型输出状态分类结果","target":"三层前馈网络输出正常/异常概率","verdict":"SAME","evidence":"p10"},
+ {"claim":"1","element_id":"1-4","feature":"命中告警阈值时输出异常告警","target":"异常概率超过0.8时推送告警","verdict":"SAME","evidence":"p11"},
+ {"claim":"5","element_id":"5-1","feature":"处理器执行实现权1方法的装置","target":"固件部署同上推理流程","verdict":"SAME","evidence":"p15"}
+]

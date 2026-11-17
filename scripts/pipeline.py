@@ -39,8 +39,13 @@ def read_doc(path):
         try:
             from docx import Document
         except ImportError:
+            print("[WARN] 未安装 python-docx，docx 内容未能读取")
             return ""
-        return "\n".join(x.text for x in Document(str(p)).paragraphs)
+        try:
+            return "\n".join(x.text for x in Document(str(p)).paragraphs)
+        except Exception:
+            print(f"[FAIL] docx 无法解析：{p}")
+            return None
     return p.read_text(encoding="utf-8", errors="ignore")
 
 
@@ -129,14 +134,20 @@ def main():
 
     doc = Path(args.doc)
     if not doc.exists():
-        print(f"[FAIL] 文件不存在：{doc}")
+        print(f"[FAIL] 文件不存在或无法解析：{doc}")
         return 2
 
     outdir = Path(args.out)
     outdir.mkdir(parents=True, exist_ok=True)
     skip = {s.strip() for s in args.skip.split(",") if s.strip()}
 
-    text = read_doc(doc)
+    try:
+        text = read_doc(doc)
+    except (OSError, ValueError):
+        print(f"[FAIL] 文件不存在或无法解析：{doc}")
+        return 2
+    if text is None:
+        return 2
     topic = guess_topic(text)
     keywords = args.keywords or guess_keywords(text, topic)
     has_claims = bool(re.search(r"权利要求书|权利要求\s*1|^1\s*[.、]", text, re.M))
