@@ -1,8 +1,17 @@
 # 专利申请助手（Patent Application Assistant）
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Skill](https://img.shields.io/badge/type-AI%20Agent%20Skill-blue)](SKILL.md)
+[![Scripts](https://img.shields.io/badge/scripts-6%20runnable-success)](scripts/)
+
 一个把「专利交底书撰写、保护点挖掘、查新检索、权利要求与说明书起草、侵权比对与规避设计、申请前质检」串成一条流水线的 **AI Agent Skill**。
 
-它本身不写代码去爬专利，而是把 188 个开源专利项目的成熟能力，编排成一套**有判据、有证据、有质检门槛**的实务流程：每一步告诉你调哪个工具、产出什么、怎么判断合格。
+两件事它都做：
+
+1. **编排**——把 187 个开源专利项目的能力，编进一套**有判据、有证据、有质检门槛**的实务流程，每一步告诉你调哪个工具、产出什么、怎么判断合格；
+2. **可执行**——高频的六件事（检索计划、黑白附图、权项细检、侵权比对、交付物机检、MCP 接入）已经写成本仓库自带的 Python 脚本，离线可跑、结果确定，不依赖任何外部项目安装。
+
+> 本仓库只做编排与本地实现，**不内嵌**被致谢项目的代码（避免 GPL/AGPL 传染，也避免把上下文撑爆）；需要时按 `references/open-source-index.md` 指的位置现装现用。
 
 > 适用于中国发明专利 / 实用新型 / 外观设计的申请准备；也可用于 FTO 初筛与规避设计讨论。
 > 输出的所有结论均为**技术层面初判**，不构成法律意见。
@@ -83,25 +92,61 @@ patent-application-assistant/
 
 ---
 
-## 安装
+## 如何调用这个 Skill
 
-作为 Skill 使用：
+它是一个**纯 Markdown + Python 脚本目录**，没有服务、没有 API Key 也能用。放进任何支持 Skill 的 Agent 的技能目录即可。
+
+### 1. 装到技能目录
 
 ```bash
-# Claude Code 系
-mkdir -p .claude/skills
-git clone <this-repo> .claude/skills/patent-application-assistant
+git clone https://github.com/Anathleticbicyclist/patent-application-assistant.git
 
-# 豆包 / 通用 Agent 技能目录
+# Claude Code
+mkdir -p ~/.claude/skills && cp -r patent-application-assistant ~/.claude/skills/
+
+# 豆包 / 通用 Agent
 cp -r patent-application-assistant ~/.doubao/agent_mode/workspace/.user_skills/
+
+# Codex / Cursor 等支持 skill 目录的工具：放进其 skills 目录，或直接把本目录挂进上下文
 ```
 
-安装后直接说人话即可触发：
+关键约束：目录名必须是 `patent-application-assistant`，与 `SKILL.md` 里 frontmatter 的 `name` 一致，否则不会被识别。
 
-- 「把这个电池预警方案整理成专利交底书」
-- 「帮我查一下这个交互方案有没有人做过」
-- 「竞品这个专利 CN112345678A，我们会不会侵权，怎么绕」
-- 「权利要求帮我看看，有没有多余的必要技术特征」
+### 2. 触发方式
+
+**隐式触发**（推荐）——直接说人话，Agent 读 `description` 自行匹配：
+
+| 你想做的事 | 这样说 |
+|---|---|
+| 交底书 | 「把这个电池预警方案整理成专利交底书」 |
+| 查新 | 「帮我查一下这个交互方案有没有人做过」 |
+| 保护点挖掘 | 「这个方案能拆成几个权利要求？哪些是必守的」 |
+| 规避 | 「竞品专利 CN112345678A，我们会不会侵权，怎么绕」 |
+| 权项打磨 | 「权利要求帮我看看，有没有多余的必要技术特征」 |
+| 改进意见 | 「审查员大概率会拿哪篇来驳我，怎么补」 |
+
+**显式调用**——点名技能，适合需要确定性时：
+
+```
+使用 $patent-application-assistant 帮我把这份技术方案写成交底书
+```
+
+### 3. 直接调脚本（不经过 Agent）
+
+```bash
+pip install -r requirements.txt
+python3 scripts/patent_cli.py --help
+bash scripts/run_examples.sh          # 端到端自检，先确认环境是通的
+```
+
+### 4. 典型工作流
+
+```
+交底书 → §3 查新(patent_cli.py search) → §4 保护点挖掘 → §5 权项(patent_cli.py claims)
+      → 客户反馈 → 规避比对(patent_cli.py chart) → 申请文件(patent_cli.py check) → 交付
+```
+
+每一棒的输入输出格式都写在 `references/workflow.md`；每步要做完才能进下一步，别跳。
 
 ---
 
@@ -170,7 +215,9 @@ python3 scripts/check_deliverable.py 申请文件.md --type application
 # 致谢
 本 Skill 的每一个环节，都建立在下面这些开源作者的工作之上。这份清单按用途分类，**逐项列出**——没有它们，这个流程只是空架子。
 
-> 两级索引：本节回答「感谢了谁」；每个项目**能用在哪一步**，见 [`references/open-source-index.md`](references/open-source-index.md) 的 186 项全量对照表。
+> 两级索引：本节回答「感谢了谁」；每个项目**能用在哪一步**，见 [`references/open-source-index.md`](references/open-source-index.md) 的 187 项全量对照表。
+
+感谢方式说明：本仓库**不复制、不内嵌**这些项目的代码，只在流程里引用它们的方法与接口；每个项目的许可证、作者与仓库地址均以其原始仓库为准，使用时请遵守各自的许可条款。
 
 特别感谢把「专利」这个高度封闭的领域开源出来的团队：PQAI 把语义检索做成了可自托管的服务栈，EPO/USPTO 的客户端让数据不再是黑箱，以及近两年涌现的一批中文 Agent Skill 作者，把交底书这类「师傅带徒弟」的经验写成了可复用的提示词与检查表。
 
