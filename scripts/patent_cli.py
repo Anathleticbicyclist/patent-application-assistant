@@ -18,6 +18,7 @@ HERE = Path(__file__).parent
 
 COMMANDS = {
     "pipeline": ("pipeline.py", "一条命令跑完：机检→查新→权项→附图→比对→汇总"),
+    "gate": ("compliance_check.py", "P0.5 合规闸门：权属/公开/保密审查/数据出境/单一性"),
     "search": ("prior_art_search.py", "生成查新检索计划（检索式 + 链接 + 记录表）"),
     "figure": ("figure_gen.py", "生成国知局格式的黑白说明书附图"),
     "claims": ("claim_check.py", "权利要求形式检查（引用基础/多项引多项/禁用语）"),

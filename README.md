@@ -52,7 +52,7 @@ P0 意图路由 ──┬─ 只有想法 ──────→ P1 结构化 →
 | P5 交底书 | 12 节完整文档 | ≥3 个实质不同的实施例 |
 | P6 权项与说明书 | 独权 + 从权梯度 + 四段式说明书 | 最小必要特征集，独权不写效果 |
 | P7 侵权/规避 | 逐特征比对表 + 五类规避方案 | 全覆盖原则（All Elements Rule） |
-| P8 质检 | 8 类 40 项清单 + 机检报告 | 形式项机检，实质项人工 |
+| P8 质检 | 66 项清单（40 基础 + 26 专项）+ 机检报告 | 形式项机检，实质项人工 |
 
 ---
 
@@ -71,7 +71,9 @@ patent-application-assistant/
 │   ├── disclosure-template.md      # 交底书 12 节写法与退回原因
 │   ├── claims-drafting.md          # 权项与说明书规则 + 正反例
 │   ├── design-around.md            # FTO 比对与五类规避路径
-│   ├── review-checklist.md         # 8 类 40 项质检 + OA 应对
+│   ├── review-checklist.md         # 66 项质检（8 基础类 + 4 专项类）+ OA 应对
+│   ├── compliance-gate.md          # P0.5 合规闸门：权属/宽限期/保密审查/数据出境/时限
+│   ├── subject-matter.md           # 分领域撰写：软件/机械/电子/医药/化学的客体与要点
 │   ├── open-source-map.md          # 开源项目 ↔ 流程步骤映射（精选 49 个）
 │   └── open-source-index.md        # 全量索引（186 个，逐项标注可用阶段）
 ├── assets/
@@ -86,8 +88,10 @@ patent-application-assistant/
 │   ├── check_deliverable.py        # 交付物机检（章节/编号/摘要/占位符）
 │   ├── mcp_setup.py                # 高频专利 MCP 配置生成（不写密钥明文）
 │   └── run_examples.sh             # 端到端自检
+├── tests/
+│   └── test_checks.py              # 回归测试：合格样例必须全绿、缺陷样例必须被抓出
 ├── examples/
-│   └── battery-case/               # 电池热失控预警的完整示例（申请文件+比对映射+附图规格）
+│   └── battery-case/               # 完整示例：合格稿 + 缺陷稿 + 比对映射 + 附图规格
 └── requirements.txt
 ```
 
@@ -158,7 +162,11 @@ bash scripts/run_examples.sh          # 端到端自检，先确认环境是通�
 ```bash
 python3 scripts/patent_cli.py --help
 
-# 0. 全流程一条命令（推荐）
+# 0. 开工前先走合规闸门（权属/公开/保密审查/数据出境）
+python3 scripts/patent_cli.py gate --interactive --out gate.md
+python3 scripts/patent_cli.py gate --answers answers.json --out gate.md
+
+# 全流程一条命令（推荐）
 python3 scripts/patent_cli.py pipeline --doc 交底书.md \
   --ipc H01M10,G01R31 --fig fig.json --map map.json --out ./run1
 # 自动产出：00-运行报告.md + search/ + claims.json + figure.png + claim-chart.md
@@ -210,6 +218,12 @@ python3 scripts/check_deliverable.py 申请文件.md --type application
 ```
 
 自动检查：章节齐全度、权项编号连续性、多项引多项、引用基础、实施例数量、摘要字数、疑似引用与占位符、免责声明。
+权项细检（引用基础、引用方向、从权主题一致性、「其特征在于」位置、说明书支持度、摘要附图）：
+
+```bash
+python3 scripts/patent_cli.py claims 申请文件.md
+```
+
 输出 PASS/WARN/FAIL 清单与评分。**机检通过 ≠ 合格**，实质项仍需人工过 `review-checklist.md`。
 
 ---
@@ -219,6 +233,20 @@ python3 scripts/check_deliverable.py 申请文件.md --type application
 1. **不编造证据** —— 专利号、对比文件、段落原文必须可核；没有就写「未检索到」并说明检索局限。
 2. **不虚构法理** —— 只引用真实存在的法条，不确定就标「需代理师确认」。
 3. **区分事实与判断** —— 检索结果是事实，新颖性/侵权是初判，必须附免责声明。
+4. **不做非正常申请** —— 不伪造实验数据与实施例、不拼凑无研发支撑的方案（专利法第 20 条诚信原则）。
+
+## 保密与数据出境（重要）
+
+交底书常含未公开的配方、参数、客户数据、源代码，而**专利公开是不可逆的**——写进去就等于永久公开。同时，把技术方案发给境外 API / MCP 服务，等于把技术秘密送出境外。
+
+本仓库的默认做法：
+
+- 检索阶段只发**检索式与上位化描述**，不发交底书原文；
+- MCP 与 API 的密钥全部走环境变量，不写明文、不入库；
+- 需要外发原文时，先经使用者确认并脱敏；
+- 涉及个人信息、人体数据的实施例，先去标识化。
+
+这条不是可选建议：一次误发就是永久的信息损失。
 
 ---
 

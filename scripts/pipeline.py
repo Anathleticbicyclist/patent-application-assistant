@@ -68,7 +68,7 @@ def guess_keywords(text, topic):
     if not text:
         return ""
     cands = re.findall(r"[A-Za-z][A-Za-z\-]{3,}", text)          # 英文术语
-    cn = re.findall(r"(?:(?![的之了])[一-龥]){2,6}(?:模块|单元|装置|方法|算法|信号|阈值|链路|平台)", text)
+    cn = re.findall(r"(?:(?![的之了与和及对])[一-龥]){2,6}(?:模块|单元|装置|方法|算法|信号|阈值|链路|平台)", text)
     STOP_PREFIX = ("所述", "对所述", "与", "和", "及", "当", "若", "在", "的", "该")
     freq = {}
     for w in cands + cn:

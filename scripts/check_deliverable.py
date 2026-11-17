@@ -134,7 +134,7 @@ def check_application(text):
             continue
         prior = "".join(x for k, x in claims if k < n)
         own = c.replace("所述", "")
-        for term in re.findall(r"所述([^\s，。；、的为是在由与和及]{2,8})", c):
+        for term in re.findall(r"所述([^\s，。；、的为是在由与和及所述]{2,6})", c):
             if not term:
                 continue
             if term in prior or term in own:
