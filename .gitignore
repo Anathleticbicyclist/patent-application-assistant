@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.mcp.json
+search/
+out/
+*.log
+.DS_Store

@@ -1,0 +1,7 @@
+interface:
+  display_name: "专利申请助手"
+  short_description: "交底书·查新·保护点挖掘·规避·申请文件全流程"
+  default_prompt: "使用 $patent-application-assistant 把这个技术方案整理成专利交底书"
+
+policy:
+  allow_implicit_invocation: true

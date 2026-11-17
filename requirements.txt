@@ -1,0 +1,8 @@
+# 基础依赖（全部脚本共用）
+# pip install -r requirements.txt
+matplotlib>=3.5      # figure_gen.py 绘图
+Pillow>=9.0          # figure_gen.py 二值化
+python-docx>=0.8.11  # 读取 .docx 交付物（可选）
+
+# 以下仅在调用在线检索时需要
+requests>=2.28
