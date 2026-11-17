@@ -153,6 +153,26 @@ def fetch_uspto(query, limit=10):
 
 PROVIDERS = {"pqai": fetch_pqai, "epo": fetch_epo, "uspto": fetch_uspto}
 
+# 凭据 → provider 的探测顺序，auto 模式按此顺序找第一个可用的
+CREDENTIALS = {
+    "pqai": ("PQAI_TOKEN",),
+    "epo": ("EPO_OPS_KEY", "EPO_OPS_SECRET"),
+    "uspto": ("USPTO_API_KEY",),
+}
+
+
+def available_providers():
+    """返回当前环境里凭据齐全的 provider（顺序即优先级）。"""
+    return [name for name, keys in CREDENTIALS.items()
+            if all(os.getenv(k) for k in keys)]
+
+
+def degrade_note():
+    """没有任何凭据时的降级说明——不是错误，是明示边界。"""
+    missing = ", ".join(k for keys in CREDENTIALS.values() for k in keys)
+    return (f"未检测到可用的检索 API 凭据（{missing} 均未设置），"
+            "已降级为**检索计划模式**：检索式与直链可直接在浏览器执行，命中数请回填。")
+
 
 # ---------- 输出 ----------
 
@@ -191,8 +211,8 @@ def main():
     ap.add_argument("--country", default="", help="国别限定，如 CN/US/EP")
     ap.add_argument("--year-from", type=int, default=None, help="起始年份")
     ap.add_argument("--out", default=".", help="输出目录")
-    ap.add_argument("--provider", choices=list(PROVIDERS) + [""], default="",
-                    help="可选：调用真实 API（需相应环境变量）")
+    ap.add_argument("--provider", choices=list(PROVIDERS) + ["auto", ""], default="auto",
+                    help="auto=有凭据就调、没凭据静默降级；也可指定 pqai/epo/uspto；留空=只出计划")
     args = ap.parse_args()
 
     kw = norm_terms(args.keywords) or [args.topic]
@@ -206,8 +226,16 @@ def main():
     links = build_links(queries[2]["检索式"], args.year_from, args.country)
 
     note, hits = None, None
-    if args.provider:
-        hits, note = PROVIDERS[args.provider](queries[2]["检索式"], 10)
+    provider = args.provider
+    if provider == "auto":
+        usable = available_providers()
+        provider = usable[0] if usable else ""
+        if not provider:
+            note = degrade_note()
+        else:
+            print(f"[auto] 检测到凭据，使用 provider: {provider}")
+    if provider:
+        hits, note = PROVIDERS[provider](queries[2]["检索式"], 10)
 
     plan = render_plan(args.topic, queries, links, note, hits)
     (outdir / "search-plan.md").write_text(plan, encoding="utf-8")

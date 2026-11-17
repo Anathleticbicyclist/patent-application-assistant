@@ -77,7 +77,8 @@ patent-application-assistant/
 ├── assets/
 │   └── disclosure-template.md      # 可直接填写的交底书空模板
 ├── scripts/
-│   ├── patent_cli.py               # 统一入口（search/figure/claims/chart/check/mcp）
+│   ├── patent_cli.py               # 统一入口（pipeline/search/figure/claims/chart/check/mcp）
+│   ├── pipeline.py                 # 全流程编排：一条命令跑完并出报告
 │   ├── prior_art_search.py         # 三档检索式 + 五库直链 + 检索记录表
 │   ├── figure_gen.py               # 国知局格式黑白附图（纯二值、只含标记、300DPI）
 │   ├── claim_check.py              # 权项细检：多项引多项/引用基础/引用方向/禁用语
@@ -157,6 +158,12 @@ bash scripts/run_examples.sh          # 端到端自检，先确认环境是通�
 ```bash
 python3 scripts/patent_cli.py --help
 
+# 0. 全流程一条命令（推荐）
+python3 scripts/patent_cli.py pipeline --doc 交底书.md \
+  --ipc H01M10,G01R31 --fig fig.json --map map.json --out ./run1
+# 自动产出：00-运行报告.md + search/ + claims.json + figure.png + claim-chart.md
+# 中途某步失败不中断，最后统一告诉你「还差什么」；有硬伤时退出码为 1
+
 # 1. 查新：先出检索计划（三档检索式 + CNIPA/Google/Espacenet/PATENTSCOPE/USPTO 直链）
 python3 scripts/patent_cli.py search --topic "电池热失控预警" \
   --keywords "热失控,thermal runaway,false alarm" --ipc H01M10,G01R31 \
@@ -184,7 +191,16 @@ python3 scripts/patent_cli.py mcp --target claude
 bash scripts/run_examples.sh      # 用 examples/battery-case 跑通全部脚本
 ```
 
-**没有 API 凭据时的行为**：`search` 不编造命中数，只给检索式与链接，命中栏留空待人工回填；`mcp` 输出 `${ENV}` 占位不写入明文。刻意如此——宁可少给结论，也不给假数据。
+**没有 API 凭据时的行为（自动降级，不用你先报错再改配置）**：
+
+| 场景 | 脚本行为 |
+|---|---|
+| 无任何检索凭据 | `search` 默认 `--provider auto`，静默降级为「检索计划模式」：出检索式 + 直链，命中栏留空 |
+| 有凭据 | `auto` 按 PQAI → EPO → USPTO 顺序挑第一个可用的，自动调真实接口 |
+| `mcp` 无 key | 输出 `${ENV}` 占位 + 逐项标注「✅ 可用 / ⚠️ 待配置（缺哪个变量）」，不写入明文 |
+| 文档里没有权项 | `pipeline` 自动跳过权项与比对步，不报错 |
+
+刻意如此——宁可少给结论，也不给假数据。
 
 ## 交付物机检
 

@@ -16,6 +16,7 @@
 """
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -48,6 +49,17 @@ PILLARS = {
     "draft": [],
     "review": [],
 }
+
+
+def status(name):
+    """探测该 MCP 是否有可用凭据；没有不是错误，只是「需要先配 key」。"""
+    keys = list(SERVERS[name]["env"])
+    if not keys:
+        return "ready", "无需 key"
+    missing = [k for k in keys if not os.getenv(k)]
+    if missing:
+        return "need-key", f"缺 {', '.join(missing)}"
+    return "ready", "凭据已就位"
 
 
 def build(selected):
@@ -94,13 +106,24 @@ def main():
         path = args.out or ""
 
     print(text)
-    print("\n--- 接入说明 ---")
+
+    print("\n--- 服务状态 ---")
+    ready, need = [], []
     for name in picked:
-        print(f"- {name}: {SERVERS[name]['说明']}")
-    print("\n环境变量（真实值请自行 export，勿提交到仓库）：")
-    for name in picked:
-        for k in SERVERS[name]["env"]:
-            print(f"  export {k}=<your-key>")
+        st, why = status(name)
+        (ready if st == "ready" else need).append(name)
+        print(f"- {name:<15} {'✅ 可用' if st == 'ready' else '⚠️ 待配置'}  ({why})  {SERVERS[name]['说明']}")
+
+    print("\n--- 下一步 ---")
+    if ready:
+        print(f"可直接用的：{', '.join(ready)}")
+    if need:
+        print(f"需要先配 key 的：{', '.join(need)}")
+        print("配好之前这些服务不会生效，但不影响本地脚本（search/figure/claims 全部离线可用）。")
+        print("\n请自行 export 真实值，切勿提交到仓库：")
+        for name in need:
+            for k in SERVERS[name]["env"]:
+                print(f"  export {k}=<your-key>")
     if path:
         Path(path).write_text(text, encoding="utf-8")
         print(f"\n已写入 {path}")
