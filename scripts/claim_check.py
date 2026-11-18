@@ -36,6 +36,53 @@ CATEGORY_WORDS = {
     "介质": ["存储介质", "可读介质", "程序产品"],
 }
 
+# —— 洗涤电器领域专项机检：仅在命中 ≥2 个领域词时触发，其余文档零影响；只出 WARN ——
+LAUNDRY_KEYWORDS = ["洗衣机", "洗碗机", "烘干机", "内筒", "外桶", "波轮", "喷淋臂",
+                    "热泵", "提升筋", "盐箱"]
+LAUNDRY_FUZZY_REFS = ["另一筒", "该筒", "上述筒", "另一内筒"]
+LAUNDRY_CONNECT_WORDS = ["固定", "铰接", "转动", "滑动", "一体成型", "连通", "连接",
+                         "安装", "套设", "抵接"]
+# 实施例必需字段：名称 → 同义词组；洗涤/烘干类实施例缺一即视为无法据以实施
+LAUNDRY_IMPL_FIELDS = [
+    ("水量/水位", ["水位", "水量", "升", "L"]),
+    ("温度", ["温度", "℃", "摄氏度"]),
+    ("转速/风量", ["转速", "rpm", "风量", "转/分"]),
+    ("时间/时长/节拍", ["时间", "时长", "节拍", "min", "分钟", "秒"]),
+    ("负载（重量/件数）", ["kg", "千克", "负载", "重量", "件衣物"]),
+    ("对照/对比数据", ["对照", "对比"]),
+]
+
+
+def _is_laundry_domain(text):
+    """命中领域关键词 ≥2 个才视为洗涤电器领域。"""
+    return sum(1 for kw in LAUNDRY_KEYWORDS if kw in text) >= 2
+
+
+def _check_laundry(claims, text, out):
+    """洗涤电器领域三项专项检查，一律 WARN，不新增 FAIL、不改评分公式。"""
+    # 1. 多筒指代唯一性：出现「大筒/小筒」时，不得残留模糊指代
+    if "大筒" in text or "小筒" in text:
+        fuzzy = [w for w in LAUNDRY_FUZZY_REFS if w in text]
+        if fuzzy:
+            out.append(("WARN", "多筒指代不清",
+                        "「另一筒」等模糊指代未指明是大筒还是小筒，多筒权项极易被认定指代不清"
+                        "（第 26 条第 4 款，以代理师确认为准）"))
+    # 2. 结构类独权连接关系：装置/系统独权正文须写出连接或位置关系词
+    for c in claims:
+        if c["is_dependent"] or c["category"] not in ("装置", "系统"):
+            continue
+        if not any(w in c["text"] for w in LAUNDRY_CONNECT_WORDS):
+            out.append(("WARN", f"装置/系统独权 {c['no']} 未写出连接关系或位置关系",
+                        "固定/转动/滑动/一体成型/连通等连接关系缺失，易踩第 26 条第 4 款清楚性"))
+    # 3. 实施例必需字段：在「具体实施方式／实施例」段落内核对六类字段
+    m_spec = re.search(r"具体实施方式|实施例", text)
+    spec = text[m_spec.start():] if m_spec else text
+    missing = [name for name, syns in LAUNDRY_IMPL_FIELDS
+               if not any(s in spec for s in syns)]
+    if missing:
+        out.append(("WARN", "实施例缺字段：" + "、".join(missing),
+                    "缺项视为无法据以实施（第 26 条第 3 款，以代理师确认为准）"))
+
 
 def read_text(path):
     p = Path(path)
@@ -264,6 +311,10 @@ def check(claims, text):
     if m:
         n = len(re.sub(r"\s", "", m.group(1)))
         add(("PASS" if n <= 300 else "FAIL", f"摘要字数 {n}", "" if n <= 300 else "超过 300 字"))
+
+    # 洗涤电器领域专项机检（仅本领域触发；其余文档输出与评分保持不变，一律 WARN）
+    if _is_laundry_domain(text):
+        _check_laundry(claims, text, out)
     return out
 
 

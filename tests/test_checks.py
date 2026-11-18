@@ -118,6 +118,46 @@ pipe_dir = Path(tempfile.mkdtemp(prefix="patent_pipe_"))
 rc, out = run("pipeline.py", "--doc", str(EX / "application.md"), "--out", str(pipe_dir))
 expect("pipeline 合格样例退出码 0", rc == 0, f"实际 {rc}")
 
+print("7. 洗涤电器领域专项检查（合成文本，不依赖 examples/laundry-case）")
+laundry_dir = Path(tempfile.mkdtemp(prefix="patent_laundry_"))
+
+# 文本 A：多筒指代不清 + 装置独权缺连接关系 + 实施例缺六类字段
+text_a = """# 技术领域
+本方案涉及一种双筒洗衣机，含内筒与外桶。
+
+## 权利要求书
+1. 一种双筒洗衣机装置，其特征在于，包括大筒、小筒和分水阀，大筒用于洗涤外衣，小筒用于洗涤内衣，分水阀向大筒和小筒供水，另一筒配置独立悬挂结构。
+
+## 具体实施方式
+实施例：本方案洗涤效果好，用户体验佳。
+"""
+file_a = laundry_dir / "laundry-a.md"
+file_a.write_text(text_a, encoding="utf-8")
+rc, out_a = run("claim_check.py", str(file_a))
+expect("文本 A 退出码 0（领域检查只出 WARN）", rc == 0, f"实际 {rc}")
+expect("文本 A 检出多筒指代不清", "多筒指代不清" in out_a)
+expect("文本 A 检出实施例缺字段", "实施例缺字段" in out_a)
+expect("文本 A 检出装置独权缺连接关系", "未写出连接关系或位置关系" in out_a)
+expect("文本 A 无 FAIL", "FAIL 0" in out_a)
+
+# 文本 B：指代唯一、写明连接关系、实施例六类字段齐全 → 不应出现领域 WARN
+text_b = """# 技术领域
+本方案涉及一种双筒洗衣机，含内筒与外桶。
+
+## 权利要求书
+1. 一种双筒洗衣机装置，其特征在于，包括机箱、大筒、小筒和分水阀，大筒固定于机箱一侧，小筒固定于机箱另一侧，分水阀与分排水管路连通，大筒用于洗涤外衣，小筒用于洗涤内衣。
+
+## 具体实施方式
+实施例：水位 25L、温度 40℃、转速 1200rpm、错峰时间窗 30s、大筒衣物 5kg，对照位移量 2mm（示例值）。
+"""
+file_b = laundry_dir / "laundry-b.md"
+file_b.write_text(text_b, encoding="utf-8")
+rc, out_b = run("claim_check.py", str(file_b))
+expect("文本 B 退出码 0", rc == 0, f"实际 {rc}")
+expect("文本 B 无多筒指代不清", "多筒指代不清" not in out_b)
+expect("文本 B 无实施例缺字段", "实施例缺字段" not in out_b)
+expect("文本 B 无装置独权缺连接关系", "未写出连接关系或位置关系" not in out_b)
+
 print()
 if failures:
     print(f"❌ {len(failures)} 项未通过：{failures}")
